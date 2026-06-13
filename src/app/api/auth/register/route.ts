@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
-  normalizeUsername,
   usernameToAuthEmail,
   validatePassword,
   validateUsername,
@@ -32,30 +30,19 @@ export async function POST(request: Request) {
     }
 
     const displayUsername = username.trim();
-    const normalized = normalizeUsername(username);
     const authEmail = usernameToAuthEmail(username);
-    const admin = createAdminClient();
+    const supabase = await createClient();
 
-    const { data: existingUser } = await admin
-      .from("users")
-      .select("id")
-      .eq("username", normalized)
-      .maybeSingle();
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email: authEmail,
+      password,
+      options: {
+        data: { username: displayUsername },
+      },
+    });
 
-    if (existingUser) {
-      return NextResponse.json({ error: "该账号已被注册，请直接登录" }, { status: 409 });
-    }
-
-    const { data: created, error: createError } =
-      await admin.auth.admin.createUser({
-        email: authEmail,
-        password,
-        email_confirm: true,
-        user_metadata: { username: displayUsername },
-      });
-
-    if (createError) {
-      const message = createError.message.toLowerCase();
+    if (signupError) {
+      const message = signupError.message.toLowerCase();
       if (message.includes("already") || message.includes("registered")) {
         return NextResponse.json(
           { error: "该账号已被注册，请直接登录" },
@@ -63,31 +50,22 @@ export async function POST(request: Request) {
         );
       }
       return NextResponse.json(
-        { error: formatAuthError(createError.message) },
+        { error: formatAuthError(signupError.message) },
         { status: 400 }
       );
     }
 
-    if (created.user) {
-      await admin
-        .from("users")
-        .upsert(
-          {
-            id: created.user.id,
-            email: authEmail,
-            username: normalized,
-            nickname: displayUsername,
-            last_login: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
-
-      await admin
-        .from("profiles")
-        .upsert({ user_id: created.user.id, principal: 1000 }, { onConflict: "user_id" });
+    if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return NextResponse.json(
+        { error: "该账号已被注册，请直接登录" },
+        { status: 409 }
+      );
     }
 
-    const supabase = await createClient();
+    if (data.session) {
+      return NextResponse.json({ success: true });
+    }
+
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email: authEmail,
       password,
@@ -97,7 +75,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "账号已创建，但自动登录失败。请开启 Supabase Email 提供商后重试登录。",
+            "注册成功但无法自动登录。请到 Supabase 开启 Email 提供商，并关闭 Confirm email。",
           detail: formatAuthError(loginError.message),
         },
         { status: 500 }

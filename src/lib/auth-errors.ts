@@ -2,7 +2,7 @@ export function formatAuthError(message: string): string {
   const lower = message.toLowerCase();
 
   if (lower.includes("email signups are disabled")) {
-    return "系统认证未配置完成，请联系管理员开启 Supabase Email 提供商。";
+    return "注册功能未开启。请到 Supabase → Authentication → Providers → Email，打开 Enable email provider。";
   }
   if (lower.includes("invalid login credentials")) {
     return "账号或密码错误，请检查后重试。";
