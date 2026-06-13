@@ -1,4 +1,18 @@
 export type BetResult = "pending" | "win" | "lose" | "push";
+export type Membership = "free" | "pro" | "vip";
+export type UserStatus = "active" | "suspended" | "deleted";
+
+export interface User {
+  id: string;
+  nickname: string | null;
+  avatar: string | null;
+  email: string | null;
+  membership: Membership;
+  created_at: string;
+  last_login: string | null;
+  status: UserStatus;
+  wechat_openid?: string | null;
+}
 
 export interface Profile {
   id: string;
@@ -73,6 +87,18 @@ export interface AssetStats {
   totalBets: number;
   settledBets: number;
 }
+
+export interface UserProfileStats {
+  totalBets: number;
+  totalProfit: number;
+  roi: number;
+}
+
+export const MEMBERSHIP_LABELS: Record<Membership, string> = {
+  free: "免费会员",
+  pro: "Pro 会员",
+  vip: "VIP 会员",
+};
 
 export interface ProfitPoint {
   date: string;

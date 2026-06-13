@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MoneyStatCard } from "@/components/shared/stat-card";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Wallet, Lightbulb, AlertTriangle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
@@ -11,9 +13,12 @@ interface DailyData {
   todayFunds: number;
   suggestions: string;
   risks: string;
+  guest?: boolean;
 }
 
 export default function HomePage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [data, setData] = useState<DailyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,9 +40,17 @@ export default function HomePage() {
   };
 
   const refreshInsight = async () => {
+    if (!user) {
+      router.push("/login?redirect=/");
+      return;
+    }
     setRefreshing(true);
     try {
       const res = await fetch("/api/daily-insight", { method: "POST" });
+      if (res.status === 401) {
+        router.push("/login?redirect=/");
+        return;
+      }
       const json = await res.json();
       setData(json);
     } finally {
@@ -70,7 +83,7 @@ export default function HomePage() {
           disabled={refreshing}
         >
           <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
-          刷新建议
+          {user ? "刷新建议" : "登录后刷新"}
         </Button>
       </div>
 

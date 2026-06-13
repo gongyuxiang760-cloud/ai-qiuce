@@ -1,34 +1,45 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getProfile, upsertProfile } from "@/lib/supabase/client";
-import { getBets } from "@/lib/supabase/client";
+import { NextResponse } from "next/server";
+import { createClient, requireAuthUser } from "@/lib/supabase/server";
+import {
+  getFinancialProfile,
+  getBets,
+  upsertFinancialProfile,
+} from "@/lib/supabase/data";
 import { computeAssetStats, computeProfitCurve } from "@/lib/stats";
+import { handleApiError, unauthorized } from "@/lib/api-utils";
 
 export async function GET() {
   try {
-    const [profile, bets] = await Promise.all([getProfile(), getBets()]);
+    const user = await requireAuthUser();
+    const supabase = await createClient();
+    const [profile, bets] = await Promise.all([
+      getFinancialProfile(supabase, user.id),
+      getBets(supabase, user.id),
+    ]);
+
     const principal = profile?.principal || 1000;
     const stats = computeAssetStats(principal, bets);
     const profitCurve = computeProfitCurve(principal, bets);
 
     return NextResponse.json({ stats, profitCurve, principal });
   } catch (error) {
-    console.error("Get assets error:", error);
-    return NextResponse.json({ error: "获取资产数据失败" }, { status: 500 });
+    return handleApiError(error, "获取资产数据失败");
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(request: Request) {
   try {
+    const user = await requireAuthUser();
     const { principal } = await request.json();
 
     if (!principal || principal <= 0) {
       return NextResponse.json({ error: "本金必须大于 0" }, { status: 400 });
     }
 
-    const profile = await upsertProfile(principal);
+    const supabase = await createClient();
+    const profile = await upsertFinancialProfile(supabase, user.id, principal);
     return NextResponse.json(profile);
   } catch (error) {
-    console.error("Update principal error:", error);
-    return NextResponse.json({ error: "更新本金失败" }, { status: 500 });
+    return handleApiError(error, "更新本金失败");
   }
 }

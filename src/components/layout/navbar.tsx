@@ -9,19 +9,26 @@ import {
   Brain,
   MessageCircle,
   Trophy,
+  User,
+  LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/auth-provider";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { href: "/", label: "首页", icon: Home },
-  { href: "/bets", label: "投注记录", icon: ListOrdered },
-  { href: "/assets", label: "资产", icon: Wallet },
-  { href: "/review", label: "AI复盘", icon: Brain },
-  { href: "/chat", label: "AI聊天", icon: MessageCircle },
+  { href: "/", label: "首页", icon: Home, public: true },
+  { href: "/bets", label: "投注记录", icon: ListOrdered, public: false },
+  { href: "/assets", label: "资产", icon: Wallet, public: false },
+  { href: "/review", label: "AI复盘", icon: Brain, public: false },
+  { href: "/chat", label: "AI聊天", icon: MessageCircle, public: false },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { user, loading } = useAuth();
+
+  if (pathname === "/login") return null;
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -54,6 +61,24 @@ export function Navbar() {
             );
           })}
         </nav>
+
+        <div className="flex items-center gap-2">
+          {!loading && user ? (
+            <Link href="/profile">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">我的</span>
+              </Button>
+            </Link>
+          ) : !loading ? (
+            <Link href="/login">
+              <Button size="sm" className="gap-2">
+                <LogIn className="h-4 w-4" />
+                登录
+              </Button>
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <nav className="md:hidden border-t">
@@ -75,6 +100,18 @@ export function Navbar() {
               </Link>
             );
           })}
+          <Link
+            href={user ? "/profile" : "/login"}
+            className={cn(
+              "flex flex-col items-center gap-1 px-2 py-1 text-xs",
+              pathname === "/profile" || pathname === "/login"
+                ? "text-primary"
+                : "text-muted-foreground"
+            )}
+          >
+            {user ? <User className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+            {user ? "我的" : "登录"}
+          </Link>
         </div>
       </nav>
     </header>

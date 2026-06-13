@@ -1,20 +1,34 @@
 import { NextResponse } from "next/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import {
-  getProfile,
-  getBets,
+  getFinancialProfile,
   getTodayBets,
   getTodayInsight,
   upsertDailyInsight,
-} from "@/lib/supabase/client";
+} from "@/lib/supabase/data";
 import { generateDailyInsight } from "@/lib/ai/deepseek";
 import { computeTodayFunds } from "@/lib/stats";
+import { handleApiError } from "@/lib/api-utils";
+
+const GUEST_INSIGHT = {
+  todayFunds: 1000,
+  suggestions: "登录后可获取个性化投注建议。建议关注主流联赛，单场投注不超过总资金的 5%。",
+  risks: "登录后可获取个性化风险提示。注意冷门赛事风险，避免追高赔率。",
+  guest: true,
+};
 
 export async function GET() {
   try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json(GUEST_INSIGHT);
+    }
+
+    const supabase = await createClient();
     const [profile, todayBets, insight] = await Promise.all([
-      getProfile(),
-      getTodayBets(),
-      getTodayInsight(),
+      getFinancialProfile(supabase, user.id),
+      getTodayBets(supabase, user.id),
+      getTodayInsight(supabase, user.id),
     ]);
 
     const principal = profile?.principal || 1000;
@@ -31,7 +45,7 @@ export async function GET() {
 
     const generated = await generateDailyInsight(profile, todayBets);
 
-    await upsertDailyInsight({
+    await upsertDailyInsight(supabase, user.id, {
       insight_date: new Date().toISOString().split("T")[0],
       today_funds: generated.todayFunds,
       suggestions: generated.suggestions,
@@ -46,15 +60,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Daily insight error:", error);
-    const profile = await getProfile().catch(() => null);
-    const todayBets = await getTodayBets().catch(() => []);
-    const principal = profile?.principal || 1000;
-    const todayFunds = computeTodayFunds(principal, todayBets);
-
     return NextResponse.json({
-      todayFunds,
-      suggestions: "建议关注主流联赛，单场投注不超过可用资金的 5%。",
-      risks: "避免追逐高赔率冷门，注意球队伤病和赛程密集影响。",
+      todayFunds: 1000,
+      suggestions: "建议关注主流联赛，控制单场投注比例。",
+      risks: "注意冷门赛事风险，避免追高赔率。",
       fallback: true,
     });
   }
@@ -62,14 +71,20 @@ export async function GET() {
 
 export async function POST() {
   try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    }
+
+    const supabase = await createClient();
     const [profile, todayBets] = await Promise.all([
-      getProfile(),
-      getTodayBets(),
+      getFinancialProfile(supabase, user.id),
+      getTodayBets(supabase, user.id),
     ]);
 
     const generated = await generateDailyInsight(profile, todayBets);
 
-    await upsertDailyInsight({
+    await upsertDailyInsight(supabase, user.id, {
       insight_date: new Date().toISOString().split("T")[0],
       today_funds: generated.todayFunds,
       suggestions: generated.suggestions,
@@ -83,10 +98,6 @@ export async function POST() {
       refreshed: true,
     });
   } catch (error) {
-    console.error("Refresh insight error:", error);
-    return NextResponse.json(
-      { error: "刷新今日建议失败" },
-      { status: 500 }
-    );
+    return handleApiError(error, "刷新今日建议失败");
   }
 }
