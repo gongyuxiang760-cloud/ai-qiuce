@@ -7,6 +7,7 @@ export interface User {
   nickname: string | null;
   avatar: string | null;
   email: string | null;
+  username: string | null;
   membership: Membership;
   created_at: string;
   last_login: string | null;

@@ -7,6 +7,7 @@ import {
   getBets,
 } from "@/lib/supabase/data";
 import { computeAssetStats } from "@/lib/stats";
+import { getDisplayUsername } from "@/lib/auth/username";
 import { handleApiError } from "@/lib/api-utils";
 
 export async function GET() {
@@ -28,7 +29,11 @@ export async function GET() {
       user: userProfile || {
         id: user.id,
         email: user.email,
-        nickname: user.user_metadata?.full_name || user.email?.split("@")[0],
+        username: getDisplayUsername(user.user_metadata),
+        nickname:
+          getDisplayUsername(user.user_metadata) ||
+          user.user_metadata?.full_name ||
+          "用户",
         avatar: user.user_metadata?.avatar_url,
         membership: "free",
         created_at: user.created_at,

@@ -10,7 +10,6 @@ import { MEMBERSHIP_LABELS, type User, type UserProfileStats } from "@/types";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
   User as UserIcon,
-  Mail,
   Crown,
   TrendingUp,
   BarChart3,
@@ -53,8 +52,12 @@ export default function ProfilePage() {
   }
 
   const displayName =
-    profile?.nickname || user?.user_metadata?.full_name || "用户";
-  const displayEmail = profile?.email || user?.email || "";
+    profile?.nickname ||
+    profile?.username ||
+    user?.user_metadata?.username ||
+    "用户";
+  const displayUsername =
+    profile?.username || user?.user_metadata?.username || "";
   const avatar =
     profile?.avatar || user?.user_metadata?.avatar_url || null;
 
@@ -82,8 +85,8 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-xl font-semibold">{displayName}</h2>
               <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                <Mail className="h-3.5 w-3.5" />
-                {displayEmail}
+                <UserIcon className="h-3.5 w-3.5" />
+                {displayUsername ? `@${displayUsername}` : "账号用户"}
               </div>
               <Badge variant="secondary" className="mt-2">
                 <Crown className="h-3 w-3 mr-1" />

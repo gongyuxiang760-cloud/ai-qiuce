@@ -1,26 +1,24 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, UserPlus, LogIn } from "lucide-react";
-import { formatAuthError, AUTH_ERROR_MESSAGES } from "@/lib/auth-errors";
+import { AUTH_ERROR_MESSAGES } from "@/lib/auth-errors";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
-  const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSignup, setIsSignup] = useState(false);
 
   useEffect(() => {
@@ -34,93 +32,45 @@ export function LoginForm() {
     window.location.href = redirect;
   };
 
-  const handlePasswordAuth = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setMessage("");
 
-    const trimmedEmail = email.trim();
+    try {
+      const endpoint = isSignup ? "/api/auth/register" : "/api/auth/login";
+      const payload = isSignup
+        ? { username, password, confirmPassword }
+        : { username, password };
 
-    if (isSignup) {
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password,
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      if (signupError) {
-        setLoading(false);
-        setError(formatAuthError(signupError.message));
-        if (signupError.message.toLowerCase().includes("already registered")) {
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "操作失败，请重试");
+        if (res.status === 409) {
           setIsSignup(false);
         }
         return;
       }
 
-      // Supabase 防枚举：邮箱已存在时 identities 为空
-      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
-        setLoading(false);
-        setError("该邮箱已注册，请直接登录。若忘记密码，可点「忘记密码」。");
-        setIsSignup(false);
-        return;
-      }
-
-      if (data.session) {
-        setLoading(false);
-        finishLogin();
-        return;
-      }
-
-      setLoading(false);
-      setMessage(
-        "注册成功，但需邮箱验证后才能登录。请在 Supabase 关闭 Confirm email，或去邮箱点确认链接后再登录。"
-      );
-      setIsSignup(false);
-      return;
-    }
-
-    const { data, error: loginError } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password,
-    });
-
-    setLoading(false);
-
-    if (loginError) {
-      setError(formatAuthError(loginError.message));
-      return;
-    }
-
-    if (data.session) {
       finishLogin();
+    } catch {
+      setError("网络错误，请稍后重试");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setError("请先输入邮箱，再点忘记密码。");
-      return;
-    }
-
-    setLoading(true);
+  const switchMode = () => {
+    setIsSignup(!isSignup);
     setError("");
-    setMessage("");
-
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      trimmedEmail,
-      {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/login")}`,
-      }
-    );
-
-    setLoading(false);
-
-    if (resetError) {
-      setError(formatAuthError(resetError.message));
-    } else {
-      setMessage("若该邮箱已注册，重置密码邮件已发送（需配置 SMTP 才能收到）。");
-    }
+    setConfirmPassword("");
   };
 
   return (
@@ -128,7 +78,7 @@ export function LoginForm() {
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">登录 AI球策</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          使用邮箱 + 密码登录
+          使用账号 + 密码{isSignup ? "注册" : "登录"}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -137,25 +87,23 @@ export function LoginForm() {
             {error}
           </div>
         )}
-        {message && (
-          <div className="rounded-lg bg-primary/10 text-primary text-sm p-3">
-            {message}
-          </div>
-        )}
 
-        <form onSubmit={handlePasswordAuth} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">邮箱</Label>
+            <Label htmlFor="username">账号</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="your@qq.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              id="username"
+              type="text"
+              placeholder="3～20 位，支持中文/字母/数字"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              minLength={3}
+              maxLength={20}
               required
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="password">密码</Label>
             <Input
@@ -170,6 +118,22 @@ export function LoginForm() {
             />
           </div>
 
+          {isSignup && (
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">确认密码</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="再次输入密码"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+            </div>
+          )}
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -181,38 +145,15 @@ export function LoginForm() {
             {isSignup ? "注册" : "登录"}
           </Button>
 
-          <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full text-sm"
-              onClick={() => {
-                setIsSignup(!isSignup);
-                setError("");
-                setMessage("");
-              }}
-            >
-              {isSignup ? "已有账号？去登录" : "没有账号？去注册"}
-            </Button>
-            {!isSignup && (
-              <Button
-                type="button"
-                variant="link"
-                className="w-full text-sm text-muted-foreground"
-                onClick={handleForgotPassword}
-                disabled={loading}
-              >
-                忘记密码？
-              </Button>
-            )}
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-sm"
+            onClick={switchMode}
+          >
+            {isSignup ? "已有账号？去登录" : "没有账号？去注册"}
+          </Button>
         </form>
-
-        {isSignup && (
-          <p className="text-xs text-muted-foreground text-center">
-            注册成功后若无法登录，请到 Supabase 关闭 Email 的「Confirm email」选项。
-          </p>
-        )}
       </CardContent>
     </Card>
   );
