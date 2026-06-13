@@ -5,7 +5,7 @@ import {
   getChatMessages,
   createChatMessage,
 } from "@/lib/supabase/client";
-import { generateChatResponse } from "@/lib/ai/openai";
+import { generateChatResponse } from "@/lib/ai/deepseek";
 
 export async function GET() {
   try {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Chat error:", error);
     return NextResponse.json(
-      { error: "AI 回复失败，请检查 OpenAI API 配置" },
+      { error: "AI 回复失败，请检查 DeepSeek API 配置" },
       { status: 500 }
     );
   }

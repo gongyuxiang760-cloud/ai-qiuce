@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBets, getProfile, createReview, getReviews } from "@/lib/supabase/client";
-import { generateReview } from "@/lib/ai/openai";
+import { generateReview } from "@/lib/ai/deepseek";
 
 export async function GET() {
   try {
@@ -29,7 +29,7 @@ export async function POST() {
   } catch (error) {
     console.error("Review generation error:", error);
     return NextResponse.json(
-      { error: "生成复盘失败，请检查 OpenAI API 配置" },
+      { error: "生成复盘失败，请检查 DeepSeek API 配置" },
       { status: 500 }
     );
   }

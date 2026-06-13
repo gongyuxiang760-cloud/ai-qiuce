@@ -6,7 +6,7 @@ import {
   getTodayInsight,
   upsertDailyInsight,
 } from "@/lib/supabase/client";
-import { generateDailyInsight } from "@/lib/ai/openai";
+import { generateDailyInsight } from "@/lib/ai/deepseek";
 import { computeTodayFunds } from "@/lib/stats";
 
 export async function GET() {

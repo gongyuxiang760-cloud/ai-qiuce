@@ -1,6 +1,6 @@
 # AI球策
 
-基于 Next.js + Supabase + OpenAI 的智能足球投注策略 Web 应用。
+基于 Next.js + Supabase + DeepSeek 的智能足球投注策略 Web 应用。
 
 ## 功能
 
@@ -16,7 +16,7 @@
 - Tailwind CSS
 - shadcn/ui
 - Supabase (数据库)
-- OpenAI (AI 功能)
+- DeepSeek (AI 功能)
 - Recharts (图表)
 - Vercel (部署)
 
@@ -42,7 +42,8 @@ cp .env.example .env.local
 |------|------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名密钥 |
-| `OPENAI_API_KEY` | OpenAI API 密钥 |
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 |
+| `DEEPSEEK_MODEL` | 模型名称，默认 `deepseek-chat` |
 | `NEXT_PUBLIC_DEFAULT_USER_ID` | 默认用户 ID（可选） |
 
 ### 3. 初始化数据库
@@ -91,7 +92,7 @@ src/
 │   └── layout/           # 布局
 ├── lib/                  # 工具库
 │   ├── supabase/         # Supabase 客户端
-│   ├── ai/               # OpenAI 集成
+│   ├── ai/               # DeepSeek 集成
 │   └── stats.ts          # 统计计算
 └── types/                # TypeScript 类型
 ```

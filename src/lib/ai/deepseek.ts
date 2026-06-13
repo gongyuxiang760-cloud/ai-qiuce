@@ -2,15 +2,20 @@ import OpenAI from "openai";
 import type { Bet, Profile } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
-function getOpenAI(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
+const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+
+function getDeepSeek(): OpenAI {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
-    throw new Error("缺少 OPENAI_API_KEY 环境变量");
+    throw new Error("缺少 DEEPSEEK_API_KEY 环境变量");
   }
-  return new OpenAI({ apiKey });
+  return new OpenAI({
+    apiKey,
+    baseURL: DEEPSEEK_BASE_URL,
+  });
 }
 
-const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 
 const SYSTEM_PROMPT = `你是「AI球策」，一位专业的足球投注策略顾问。
 你的职责是帮助用户进行理性、科学的足球投注决策。
@@ -28,7 +33,7 @@ export async function generateChatResponse(
 ): Promise<string> {
   const contextInfo = buildContextInfo(context);
 
-  const response = await getOpenAI().chat.completions.create({
+  const response = await getDeepSeek().chat.completions.create({
     model,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
@@ -55,7 +60,7 @@ export async function generateReview(bets: Bet[], profile: Profile | null): Prom
     )
     .join("\n");
 
-  const response = await getOpenAI().chat.completions.create({
+  const response = await getDeepSeek().chat.completions.create({
     model,
     messages: [
       {
@@ -92,12 +97,12 @@ export async function generateDailyInsight(
   const todayStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
   const todayFunds = principal - todayStake;
 
-  const response = await getOpenAI().chat.completions.create({
+  const response = await getDeepSeek().chat.completions.create({
     model,
     messages: [
       {
         role: "system",
-        content: `${SYSTEM_PROMPT}\n\n请生成今日投注建议和风险提示，返回 JSON 格式：
+        content: `${SYSTEM_PROMPT}\n\n请生成今日投注建议和风险提示，只返回 JSON，不要其他文字：
 {
   "suggestions": "今日建议（200字以内，包含具体赛事方向）",
   "risks": "今日风险（150字以内，包含需要规避的情况）"
