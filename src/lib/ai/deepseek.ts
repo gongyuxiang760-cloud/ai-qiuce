@@ -15,7 +15,7 @@ function getDeepSeek(): OpenAI {
   });
 }
 
-const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+const model = process.env.DEEPSEEK_MODEL || "deepseek-reasoner";
 
 const SYSTEM_PROMPT = `你是「AI球策」，一位专业的足球投注策略顾问。
 你的职责是帮助用户进行理性、科学的足球投注决策。
